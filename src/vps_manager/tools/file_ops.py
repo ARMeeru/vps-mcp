@@ -13,6 +13,7 @@ import asyncssh
 from ..connection_pool import ConnectionManager, SSHConnection
 from ..security import SecurityValidator, PathSecurityError
 from ..config import ServerConfig
+from ..utils.mcp_responses import MCPResponse, MCPFileError
 
 logger = logging.getLogger(__name__)
 
@@ -138,17 +139,14 @@ class FileOperationsTool:
                     
                     execution_time = int((time.time() - start_time) * 1000)
                     
-                    return {
-                        "success": True,
-                        "data": result_data,
-                        "metadata": {
-                            "execution_time_ms": execution_time,
-                            "server": server,
-                            "timestamp": timestamp,
-                            "user": server_config.username
-                        },
-                        "error": None
-                    }
+                    # Return MCP-compliant response - data directly
+                    return MCPResponse.file_read_result(
+                        content=result_data.get("content", ""),
+                        path=str(resolved_path),
+                        size_bytes=result_data.get("size_bytes", 0),
+                        encoding=result_data.get("encoding", encoding),
+                        server=server
+                    )
                     
                 finally:
                     sftp.close()

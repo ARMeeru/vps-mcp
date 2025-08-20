@@ -11,6 +11,7 @@ from ..connection_pool import ConnectionManager, SSHConnection
 from ..security import SecurityValidator, CommandSecurityError
 from ..config import ServerConfig
 from ..utils.secure_sudo import SecureSudoHandler
+from ..utils.mcp_responses import MCPResponse, MCPCommandError
 
 logger = logging.getLogger(__name__)
 
@@ -110,25 +111,24 @@ class CommandTool:
                 command, server, timeout, stream_output, start_time, timestamp
             )
             
+        except (MCPCommandError, CommandSecurityError):
+            # Re-raise MCP and security exceptions
+            raise
+            
         except Exception as e:
             execution_time = int((time.time() - start_time) * 1000)
             logger.error(f"Command execution failed: {e}")
             
-            return {
-                "success": False,
-                "data": None,
-                "metadata": {
-                    "execution_time_ms": execution_time,
+            # Convert to MCP exception
+            raise MCPCommandError(
+                message=str(e),
+                error_code=type(e).__name__.upper(),
+                details={
                     "server": server or "unknown",
-                    "timestamp": timestamp,
-                    "user": server_config.username if 'server_config' in locals() else "unknown"
-                },
-                "error": {
-                    "code": type(e).__name__,
-                    "message": str(e),
-                    "details": {"command": command}
+                    "command": command,
+                    "execution_time_ms": execution_time
                 }
-            }
+            )
     
     async def _execute_sync(
         self,
@@ -204,33 +204,50 @@ class CommandTool:
             # Log command execution for audit
             logger.info(f"Command executed on {server}: {command[:100]}...")
             
-            return {
-                "success": result.returncode == 0,
-                "data": {
-                    "stdout": result.stdout,
-                    "stderr": result.stderr,
-                    "exit_code": result.returncode,
-                    "command": command
-                },
-                "metadata": {
-                    "execution_time_ms": execution_time,
-                    "server": server,
-                    "timestamp": timestamp,
-                    "user": server_config.username
-                },
-                "error": None if result.returncode == 0 else {
-                    "code": "COMMAND_FAILED",
-                    "message": f"Command exited with code {result.returncode}",
-                    "details": {"stderr": result.stderr}
-                }
-            }
+            # Return MCP-compliant response - data directly, no wrapper
+            result_data = MCPResponse.command_result(
+                stdout=result.stdout or "",
+                stderr=result.stderr or "",
+                exit_code=result.returncode,
+                execution_time_ms=execution_time,
+                server=server,
+                command=command
+            )
+            
+            # For failed commands, raise MCP exception instead of returning error in response
+            if result.returncode != 0:
+                raise MCPCommandError(
+                    message=f"Command exited with code {result.returncode}",
+                    error_code="COMMAND_FAILED",
+                    details={
+                        "stdout": result.stdout or "",
+                        "stderr": result.stderr or "",
+                        "exit_code": result.returncode,
+                        "command": command,
+                        "server": server
+                    }
+                )
+            
+            return result_data
             
         except asyncio.TimeoutError:
             execution_time = int((time.time() - start_time) * 1000)
-            raise CommandExecutionError(f"Command timed out after {timeout} seconds")
+            raise MCPCommandError(
+                message=f"Command timed out after {timeout} seconds",
+                error_code="COMMAND_TIMEOUT",
+                details={"timeout": timeout, "server": server, "command": command}
+            )
+            
+        except MCPCommandError:
+            # Re-raise MCP exceptions
+            raise
             
         except Exception as e:
-            raise CommandExecutionError(f"Command execution failed: {e}")
+            raise MCPCommandError(
+                message=f"Command execution failed: {str(e)}",
+                error_code="EXECUTION_ERROR",
+                details={"server": server, "command": command, "error": str(e)}
+            )
             
         finally:
             if conn:
