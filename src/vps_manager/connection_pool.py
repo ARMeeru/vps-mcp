@@ -111,6 +111,9 @@ class ConnectionPool:
             SSH connection if available, None if all busy or failed
         """
         async with self._lock:
+            # Validate pool state first  
+            await self._validate_pool_state()
+            
             # Find ready connections
             ready_connections = [
                 conn for conn in self.connections 
@@ -162,21 +165,28 @@ class ConnectionPool:
             True if successful, False otherwise
         """
         if self._shutdown:
+            logger.debug(f"Skipping connection {conn.connection_id} - pool is shutting down")
             return False
             
+        # Ensure clean state before connecting
+        await self._ensure_clean_connection_state(conn)
+        
         try:
             conn.state = ConnectionState.CONNECTING
             logger.debug(f"Connecting {conn.connection_id} to {self.server_config.host}:{self.server_config.port}")
             
-            # Establish SSH connection
-            conn.connection = await asyncssh.connect(
-                self.server_config.host,
-                port=self.server_config.port,
-                options=self.ssh_options
+            # Establish SSH connection with timeout
+            conn.connection = await asyncio.wait_for(
+                asyncssh.connect(
+                    self.server_config.host,
+                    port=self.server_config.port,
+                    options=self.ssh_options
+                ),
+                timeout=self.server_config.connection_timeout + 5  # Extra buffer
             )
             
             # Test connection with a simple command
-            result = await conn.connection.run("echo 'connection-test'", check=True)
+            result = await conn.connection.run("echo 'connection-test'", check=True, timeout=10)
             if result.stdout.strip() != "connection-test":
                 raise ConnectionError("Connection test failed")
             
@@ -184,19 +194,19 @@ class ConnectionPool:
             conn.error_count = 0
             conn.mark_used()
             
-            logger.info(f"Successfully connected {conn.connection_id}")
+            logger.info(f"Successfully connected {conn.connection_id} (attempt after {conn.error_count} errors)")
             return True
             
+        except asyncio.TimeoutError as e:
+            conn.error_count += 1
+            logger.error(f"Connection timeout for {conn.connection_id}: {e}")
+            await self._cleanup_failed_connection(conn)
+            raise ConnectionError(f"Connection timeout: {e}")
+            
         except Exception as e:
-            conn.state = ConnectionState.ERROR
             conn.error_count += 1
             logger.error(f"Failed to connect {conn.connection_id}: {e}")
-            
-            # Clean up failed connection
-            if conn.connection and not getattr(conn.connection, '_closing', False):
-                conn.connection.close()
-            conn.connection = None
-            
+            await self._cleanup_failed_connection(conn)
             raise
     
     async def _connect_all(self) -> None:
@@ -297,6 +307,84 @@ class ConnectionPool:
                 conn.connection = None
         
         logger.info(f"Connection pool shutdown for {self.server_config.name}")
+    
+    async def _validate_pool_state(self) -> None:
+        """Validate and maintain pool state consistency."""
+        if self._shutdown:
+            return
+            
+        # Count connections by state
+        state_counts = {}
+        for conn in self.connections:
+            state = conn.state.value if conn.state else "unknown"
+            state_counts[state] = state_counts.get(state, 0) + 1
+        
+        # Log pool state if there are issues
+        error_count = state_counts.get("error", 0)
+        disconnected_count = state_counts.get("disconnected", 0)
+        
+        if error_count + disconnected_count > len(self.connections) // 2:
+            logger.warning(f"Pool {self.server_config.name} health: {state_counts}")
+    
+    async def _ensure_clean_connection_state(self, conn: SSHConnection) -> None:
+        """Ensure connection starts in a clean state before connecting."""
+        # Clean up any existing connection
+        if conn.connection:
+            if not getattr(conn.connection, '_closing', False):
+                try:
+                    conn.connection.close()
+                    await asyncio.wait_for(conn.connection.wait_closed(), timeout=5.0)
+                except asyncio.TimeoutError:
+                    logger.warning(f"Timeout waiting for {conn.connection_id} to close")
+                except Exception as e:
+                    logger.debug(f"Error closing old connection {conn.connection_id}: {e}")
+            conn.connection = None
+        
+        # Reset connection state
+        conn.state = ConnectionState.DISCONNECTED
+    
+    async def _cleanup_failed_connection(self, conn: SSHConnection) -> None:
+        """Clean up a failed connection thoroughly."""
+        if conn.connection:
+            try:
+                if not getattr(conn.connection, '_closing', False):
+                    conn.connection.close()
+                # Don't wait indefinitely for cleanup
+                await asyncio.wait_for(conn.connection.wait_closed(), timeout=3.0)
+            except asyncio.TimeoutError:
+                logger.warning(f"Timeout cleaning up failed connection {conn.connection_id}")
+            except Exception as e:
+                logger.debug(f"Error during connection cleanup {conn.connection_id}: {e}")
+            finally:
+                conn.connection = None
+        
+        # Mark as disconnected so health check can retry
+        conn.state = ConnectionState.DISCONNECTED
+    
+    def get_pool_stats(self) -> Dict[str, int]:
+        """Get current pool statistics for monitoring."""
+        stats = {
+            "total": len(self.connections),
+            "ready": 0,
+            "busy": 0, 
+            "connecting": 0,
+            "error": 0,
+            "disconnected": 0
+        }
+        
+        for conn in self.connections:
+            if conn.state == ConnectionState.READY:
+                stats["ready"] += 1
+            elif conn.state == ConnectionState.BUSY:
+                stats["busy"] += 1
+            elif conn.state == ConnectionState.CONNECTING:
+                stats["connecting"] += 1
+            elif conn.state == ConnectionState.ERROR:
+                stats["error"] += 1
+            elif conn.state == ConnectionState.DISCONNECTED:
+                stats["disconnected"] += 1
+        
+        return stats
     
     def get_status(self) -> Dict[str, any]:
         """Get current pool status.
