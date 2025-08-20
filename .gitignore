@@ -1,0 +1,438 @@
+# MCP VPS Manager - Comprehensive .gitignore
+# Protects sensitive configuration, keys, logs, and environment data
+
+# ============================================================================
+# SENSITIVE CONFIGURATION FILES
+# ============================================================================
+
+# Server configurations (contains IPs, usernames, paths)
+config/servers.yaml
+config/servers.yml
+config/production.yaml
+config/staging.yaml
+config/development.yaml
+
+# Claude Desktop configurations (may contain sensitive paths)
+config/claude_desktop_config.json
+config/mcp_settings.json
+
+# Custom configuration files
+config/local.*
+config/personal.*
+config/private.*
+config/*_real.*
+
+# ============================================================================
+# SSH KEYS AND CERTIFICATES
+# ============================================================================
+
+# SSH private keys
+*.pem
+*.key
+*_key
+*_rsa
+*_ed25519
+*_ecdsa
+id_rsa*
+id_ed25519*
+id_ecdsa*
+
+# SSH key directories
+.ssh/
+keys/
+certs/
+certificates/
+
+# Test SSH keys (in case they're real keys)
+tests/keys/*.pem
+tests/keys/*_key
+tests/keys/id_*
+
+# GPG keys
+*.gpg
+*.asc
+
+# ============================================================================
+# ENVIRONMENT AND SECRETS
+# ============================================================================
+
+# Environment files (not used in this project but kept for safety)
+.env
+.env.*
+.envrc
+.environment
+
+# Secret files
+secrets.*
+secrets/
+vault.*
+
+# API keys and tokens
+*.token
+api_keys.*
+credentials.*
+
+# Password files
+passwords.*
+passwd.*
+
+# ============================================================================
+# LOGS AND DEBUG FILES
+# ============================================================================
+
+# Log directories and files
+logs/
+*.log
+*.log.*
+
+# VPS Manager specific logs
+vps-manager*.log
+mcp-vps*.log
+debug*.log
+error*.log
+audit*.log
+
+# System logs that might be copied
+syslog*
+auth.log*
+secure*
+
+# Application logs
+app.log*
+server.log*
+connection.log*
+
+# ============================================================================
+# PYTHON AND DEVELOPMENT
+# ============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env/
+virtualenv/
+
+# Pipenv
+Pipfile.lock
+
+# Poetry
+poetry.lock
+
+# pyenv
+.python-version
+
+# ============================================================================
+# IDE AND EDITOR FILES
+# ============================================================================
+
+# PyCharm
+.idea/
+*.iml
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ============================================================================
+# OPERATING SYSTEM FILES
+# ============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+
+# ============================================================================
+# DATABASE AND BACKUP FILES
+# ============================================================================
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Database dumps (may contain sensitive data)
+*.sql
+*.dump
+backup.*
+*_backup.*
+
+# ============================================================================
+# TEMPORARY AND CACHE FILES
+# ============================================================================
+
+# Temporary directories
+tmp/
+temp/
+.tmp/
+.temp/
+
+# Cache directories
+.cache/
+cache/
+
+# Node modules (if any)
+node_modules/
+
+# ============================================================================
+# TEST AND VALIDATION OUTPUT
+# ============================================================================
+
+# Test results with potentially sensitive server info
+validation_report.json
+test_results.json
+server_validation_*.json
+
+# Test output logs
+test_output*.log
+validation*.log
+
+# Performance test data
+perf_results/
+benchmark_results/
+
+# ============================================================================
+# MCP AND CLAUDE SPECIFIC
+# ============================================================================
+
+# Claude Desktop user configurations
+~/Library/Application Support/Claude/
+~/.config/Claude/
+%APPDATA%\Claude\
+
+# MCP server state files
+.mcp_state
+mcp_cache/
+
+# Claude conversation logs (if any)
+claude_logs/
+conversation_*.json
+
+# ============================================================================
+# NETWORK AND MONITORING DATA
+# ============================================================================
+
+# Network captures (may contain sensitive traffic)
+*.pcap
+*.pcapng
+*.cap
+
+# Monitoring data
+metrics/
+prometheus_data/
+
+# SSL certificates and keys
+*.crt
+*.cert
+*.cer
+*.der
+
+# ============================================================================
+# BACKUP AND ARCHIVE FILES
+# ============================================================================
+
+# Archive files that might contain sensitive data
+*.tar.gz
+*.tgz
+*.zip
+*.rar
+*.7z
+backup_*.tar.gz
+*_backup.zip
+
+# ============================================================================
+# CUSTOM SCRIPTS WITH CREDENTIALS
+# ============================================================================
+
+# Custom scripts that might contain hardcoded credentials
+*_real.sh
+*_prod.sh
+*_production.sh
+*_live.sh
+deploy_real.*
+connect_*.sh
+
+# Old/backup script files
+*.old
+*.bak
+*.backup
+
+# ============================================================================
+# VERSION CONTROL
+# ============================================================================
+
+# Git
+.git/
+.gitconfig_local
+
+# Other VCS
+.svn/
+.hg/
+.bzr/
+
+# ============================================================================
+# DOCUMENTATION DRAFTS
+# ============================================================================
+
+# Documentation with real server info
+DEPLOYMENT.md
+PRODUCTION.md
+REAL_SERVERS.md
+*_real.md
+
+# ============================================================================
+# ALLOW CERTAIN FILES (Override previous patterns)
+# ============================================================================
+
+# Allow template/example files
+!templates/
+!*example*
+!*template*
+!*sample*
+
+# Allow test configurations that don't contain real data
+!tests/configs/test_multiple_servers.yaml
+
+# Allow public SSH keys in examples
+!examples/**/*.pub
+
+# ============================================================================
+# PROJECT SPECIFIC IGNORES
+# ============================================================================
+
+# Real server configurations
+servers_real.yaml
+production_servers.yaml
+my_servers.yaml
+personal_config.yaml
+
+# Development helper scripts with real data
+connect_to_vps.sh
+deploy_to_production.sh
+ssh_to_servers.sh
+
+# Local development overrides
+local_settings.py
+dev_override.*
+
+# User-specific test configurations
+my_test_config.yaml
+personal_test_servers.yaml
+
+# ============================================================================
+# BACKUP DIRECTORIES (SENSITIVE DATA)
+# ============================================================================
+
+# Backup directories created by cleanup scripts
+.backup-sensitive/
+.backup/
+backup/
+*.backup
+
+# ============================================================================
+# ADDITIONAL PROJECT-SPECIFIC PROTECTIONS
+# ============================================================================
+
+# Real server data that might be created
+servers_real.*
+production_*
+*_prod.*
+*_production.*

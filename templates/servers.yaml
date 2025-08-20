@@ -1,0 +1,63 @@
+# VPS Manager Configuration Template
+# Copy this file and customize for your servers
+
+vps_manager:
+  # Connection pool settings
+  connection_pool:
+    max_connections_per_server: 3
+    connection_timeout: 30
+    health_check_interval: 300
+    reconnect_attempts: 3
+
+  # Security settings
+  security:
+    allowed_directories:
+      - "/home"
+      - "/var/log"
+      - "/etc"
+      - "/tmp"
+      - "/opt"
+    enable_command_validation: true
+    log_all_commands: true
+
+  # Logging configuration
+  logging:
+    level: "INFO"
+    file: "/tmp/vps-manager.log"
+    max_size: "10MB"
+    backup_count: 5
+
+# Server definitions
+servers:
+  # Example server configuration
+  my-server:
+    host: "your-server-ip-or-hostname"
+    port: 22
+    username: "your-username"
+    # SSH key authentication (recommended)
+    ssh_key_path: "~/.ssh/id_rsa"
+    # OR password authentication (not recommended for production)
+    # password: "your-password"
+
+    # Optional: Custom connection settings
+    connection_timeout: 30
+    keepalive_interval: 60
+
+    # Optional: Server-specific allowed directories
+    allowed_directories:
+      - "/home/myuser"
+      - "/var/www"
+      - "/opt/myapp"
+
+  # Add more servers as needed
+  # web-server:
+  #   host: "web.example.com"
+  #   port: 22
+  #   username: "deploy"
+  #   ssh_key_path: "~/.ssh/web_server_key"
+  #
+  # db-server:
+  #   host: "db.example.com"
+  #   port: 2222
+  #   username: "admin"
+  #   ssh_key_path: "~/.ssh/db_server_key"

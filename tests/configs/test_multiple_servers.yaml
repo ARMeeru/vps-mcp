@@ -1,0 +1,114 @@
+# Test configuration for multiple VPS providers and configurations
+# This file contains examples for testing different server setups
+
+vps_manager:
+  connection_pool:
+    max_connections_per_server: 2
+    connection_timeout: 15
+    health_check_interval: 60
+    reconnect_attempts: 3
+    
+  security:
+    allowed_directories:
+      - "/home"
+      - "/tmp"
+      - "/var/log"
+    enable_command_validation: true
+    log_all_commands: true
+    
+  logging:
+    level: "DEBUG"
+    file: "/tmp/vps-manager-test.log"
+    max_size: "10MB"
+
+# Test servers for different providers and configurations
+servers:
+  # DigitalOcean Ubuntu server
+  digital-ocean-ubuntu:
+    host: "your-do-server.com"  # Replace with actual server
+    port: 22
+    username: "root"
+    ssh_key_path: "~/.ssh/do_test_key"
+    connection_timeout: 30
+    allowed_directories:
+      - "/root"
+      - "/home"
+      - "/var/log"
+      - "/etc/nginx"
+    blocked_commands:
+      - "shutdown"
+      - "reboot"
+      - "systemctl.*poweroff"
+
+  # AWS EC2 Amazon Linux server
+  aws-ec2-amazon:
+    host: "ec2-xx-xx-xx-xx.compute-1.amazonaws.com"  # Replace with actual server
+    port: 22
+    username: "ec2-user"
+    ssh_key_path: "~/.ssh/aws_test_key.pem"
+    connection_timeout: 30
+    allowed_directories:
+      - "/home/ec2-user"
+      - "/var/log"
+      - "/opt"
+    max_file_size_mb: 50
+
+  # Linode CentOS server with custom SSH port
+  linode-centos:
+    host: "your-linode-server.com"  # Replace with actual server
+    port: 2222  # Custom SSH port
+    username: "admin"
+    ssh_key_path: "~/.ssh/linode_test_key"
+    connection_timeout: 45
+    allowed_directories:
+      - "/home/admin"
+      - "/var/log"
+      - "/etc/httpd"
+    blocked_commands:
+      - "yum.*remove.*kernel"
+      - "rpm.*-e.*kernel"
+
+  # Vultr Debian server
+  vultr-debian:
+    host: "your-vultr-server.com"  # Replace with actual server
+    port: 22
+    username: "debian"
+    ssh_key_path: "~/.ssh/vultr_test_key"
+    connection_timeout: 30
+    allowed_directories:
+      - "/home/debian"
+      - "/var/log"
+      - "/var/www"
+    max_file_size_mb: 100
+
+  # Hetzner Ubuntu server with limited permissions
+  hetzner-limited:
+    host: "your-hetzner-server.com"  # Replace with actual server
+    port: 22
+    username: "limited-user"
+    ssh_key_path: "~/.ssh/hetzner_test_key"
+    connection_timeout: 30
+    # Very restrictive setup for testing
+    allowed_directories:
+      - "/home/limited-user"
+      - "/tmp"
+    blocked_commands:
+      - "sudo.*"
+      - "su.*"
+      - "systemctl.*"
+      - "service.*"
+    max_file_size_mb: 10
+
+  # Local test server for development
+  local-test-server:
+    host: "test-server.local"  # Replace with actual test server
+    port: 22
+    username: "testuser"
+    ssh_key_path: "~/.ssh/test_server_key"
+    connection_timeout: 10
+    allowed_directories:
+      - "/home/testuser"
+      - "/tmp"
+      - "/var/log"
+    # Allow more commands for testing
+    blocked_commands: []  # Override defaults for testing

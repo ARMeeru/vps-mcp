@@ -1,0 +1,25 @@
+# MCP VPS Manager Requirements
+# Production dependencies for the MCP VPS Manager
+
+# Core MCP dependency
+mcp>=1.0.0
+
+# SSH connectivity
+asyncssh>=2.14.0
+paramiko>=3.0.0
+
+# Configuration and data handling
+pyyaml>=6.0
+pydantic>=2.0.0
+
+# Utilities  
+tenacity>=8.2.0
+
+# Development dependencies (install with: pip install -r requirements-dev.txt)
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0
+# pytest-mock>=3.10.0
+# black>=23.0.0
+# isort>=5.12.0
+# flake8>=6.0.0
+# mypy>=1.0.0

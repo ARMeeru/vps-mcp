@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""
+MCP VPS Manager - Production Entry Point
+
+This script provides a clean entry point for the MCP VPS Manager server.
+It handles environment setup, configuration validation, and graceful error handling.
+"""
+
+import sys
+import os
+import argparse
+from pathlib import Path
+
+# Add the src directory to Python path
+script_dir = Path(__file__).parent.parent
+src_dir = script_dir / "src"
+sys.path.insert(0, str(src_dir))
+
+def main():
+    """Main entry point for MCP VPS Manager."""
+    parser = argparse.ArgumentParser(
+        description="MCP VPS Manager - Secure SSH-based VPS management for LLMs",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s                                    # Use default config
+  %(prog)s --config /path/to/servers.yaml    # Use custom config
+  %(prog)s --log-level DEBUG                 # Enable debug logging
+        """
+    )
+
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Path to server configuration file (default: ./config/servers.yaml)"
+    )
+
+    parser.add_argument(
+        "--log-level",
+        type=str,
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default="INFO",
+        help="Set logging level (default: INFO)"
+    )
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="MCP VPS Manager v0.1.0"
+    )
+
+    args = parser.parse_args()
+
+    try:
+        # Import and run the server
+        from vps_manager.server import main as server_main
+
+        # Override command line arguments for the server
+        sys.argv = ["mcp-vps-manager"]
+        if args.config:
+            sys.argv.extend(["--config", args.config])
+        if args.log_level:
+            sys.argv.extend(["--log-level", args.log_level])
+
+        server_main()
+
+    except ImportError as e:
+        print(f"Error: Failed to import MCP VPS Manager modules: {e}", file=sys.stderr)
+        print("Make sure the package is properly installed.", file=sys.stderr)
+        sys.exit(1)
+    except FileNotFoundError as e:
+        print(f"Error: Configuration file not found: {e}", file=sys.stderr)
+        print("Create a servers.yaml file or specify a different config with --config", file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("Interrupted by user", file=sys.stderr)
+        sys.exit(0)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

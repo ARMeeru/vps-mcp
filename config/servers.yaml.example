@@ -1,0 +1,47 @@
+servers:
+  - name: production-web
+    host: 192.168.1.10
+    port: 22
+    username: admin
+    ssh_key_path: ~/.ssh/id_rsa
+    ssh_key_passphrase_env: SSH_KEY_PASS  # Optional env var name
+    allowed_paths:
+      - /home/admin
+      - /var/www
+      - /etc/nginx
+    blocked_commands:  # Additional patterns beyond default
+      - shutdown
+      - reboot
+      - poweroff
+    max_file_size_mb: 50
+    connection_timeout: 30
+    command_timeout: 300  # 5 minutes max
+
+  - name: staging-db
+    host: staging.example.com
+    port: 2222
+    username: dbadmin
+    ssh_key_path: ~/.ssh/staging_key
+    allowed_paths:
+      - /home/dbadmin
+      - /var/lib/mysql
+      - /etc/mysql
+    blocked_commands:
+      - drop database
+      - truncate
+    max_file_size_mb: 100
+    connection_timeout: 15
+    command_timeout: 600  # 10 minutes for long DB operations
+
+  - name: development
+    host: dev.example.com
+    port: 22
+    username: developer
+    ssh_key_path: ~/.ssh/dev_key
+    allowed_paths:
+      - /home/developer
+      - /var/www/html
+      - /tmp
+    max_file_size_mb: 25
+    connection_timeout: 10
+    command_timeout: 120

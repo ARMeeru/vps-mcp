@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "vps-manager": {
+      "command": "python",
+      "args": [
+        "/path/to/mcp-vps-manager/bin/mcp-vps-manager",
+        "--config",
+        "/path/to/your/servers.yaml"
+      ],
+      "env": {
+        "PYTHONPATH": "/path/to/mcp-vps-manager/src"
+      }
+    }
+  }
+}
