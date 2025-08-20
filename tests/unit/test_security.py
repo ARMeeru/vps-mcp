@@ -202,8 +202,10 @@ class TestSecurityValidator:
             base_command, user_args, use_sudo=True, sudo_password=sudo_password
         )
         
-        assert "echo 'testpass' | sudo -S" in safe_command
-        assert "systemctl 'restart' 'nginx'" in safe_command
+        # After security fix: password should NOT appear in prepared command
+        assert "testpass" not in safe_command, "Password should not appear in command string"
+        assert "sudo systemctl restart nginx" == safe_command
+        # Note: Actual secure password handling is done by SecureSudoHandler during execution
     
     def test_create_safe_command_dangerous_base(self):
         """Test rejection of dangerous base commands."""

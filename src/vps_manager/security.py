@@ -346,13 +346,11 @@ class SecurityValidator:
         command_parts = [base_command] + safe_args
         command = ' '.join(command_parts)
         
-        # Add sudo if required
+        # Add sudo if required (NOTE: Actual secure sudo execution handled by SecureSudoHandler)
         if use_sudo:
-            if sudo_password:
-                # Use sudo with password from stdin
-                command = f"echo {shlex.quote(sudo_password)} | sudo -S {command}"
-            else:
-                command = f"sudo {command}"
+            # This method only prepares commands for validation
+            # Secure sudo execution is handled by SecureSudoHandler in command execution
+            command = f"sudo {command}"
         
         return command
     

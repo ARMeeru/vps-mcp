@@ -10,6 +10,7 @@ import json
 from ..connection_pool import ConnectionManager, SSHConnection
 from ..security import SecurityValidator, CommandSecurityError
 from ..config import ServerConfig
+from ..utils.secure_sudo import SecureSudoHandler
 
 logger = logging.getLogger(__name__)
 
@@ -160,27 +161,43 @@ class CommandTool:
             
             server_config = self.connection_manager.pools[server].server_config
             
-            # Prepare command with sudo if needed
+            # Check if command needs sudo and handle securely
             validator = SecurityValidator(server_config.allowed_paths)
-            final_command = command
+            needs_sudo = validator.check_sudo_requirements(command) and not command.strip().startswith('sudo')
             
-            if validator.check_sudo_requirements(command) and not command.strip().startswith('sudo'):
+            if needs_sudo:
+                # Use secure sudo handling
                 sudo_password = self.connection_manager.pools[server].sudo_password
+                
                 if sudo_password:
-                    # Use sudo with password
-                    final_command = f"echo '{sudo_password}' | sudo -S {command}"
+                    # Secure sudo with password
+                    result = await SecureSudoHandler.execute_with_sudo(
+                        conn.connection, command, sudo_password, timeout
+                    )
                 else:
-                    # Try sudo without password (might be configured for passwordless sudo)
-                    final_command = f"sudo {command}"
-            
-            # Execute command
-            if stream_output and timeout > 3:
-                result = await self._execute_with_streaming(conn, final_command, timeout)
+                    # Passwordless sudo
+                    result = await SecureSudoHandler.execute_without_password(
+                        conn.connection, command, timeout
+                    )
+                    
+                # Convert SecureSudoResult to expected format
+                class SudoResult:
+                    def __init__(self, stdout, stderr, returncode):
+                        self.stdout = stdout
+                        self.stderr = stderr
+                        self.returncode = returncode
+                
+                result = SudoResult(result.stdout, result.stderr, result.returncode)
+                
             else:
-                result = await asyncio.wait_for(
-                    conn.connection.run(final_command, check=False),
-                    timeout=timeout
-                )
+                # Execute regular command
+                if stream_output and timeout > 3:
+                    result = await self._execute_with_streaming(conn, command, timeout)
+                else:
+                    result = await asyncio.wait_for(
+                        conn.connection.run(command, check=False),
+                        timeout=timeout
+                    )
             
             execution_time = int((time.time() - start_time) * 1000)
             
