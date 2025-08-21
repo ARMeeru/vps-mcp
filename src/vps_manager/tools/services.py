@@ -11,6 +11,7 @@ from ..connection_pool import ConnectionManager, SSHConnection
 from ..security import SecurityValidator, CommandSecurityError
 from ..config import ServerConfig
 from ..utils.distro import DistroDetector, InitSystem, DistroFamily, ServiceCommandMapper
+from ..utils.mcp_responses import MCPResponse, MCPServiceError
 
 logger = logging.getLogger(__name__)
 
@@ -127,52 +128,53 @@ class ServiceManagementTool:
                 
                 logger.info(f"Service {action} executed on {server}: {service_name}")
                 
-                return {
-                    "success": True,
-                    "data": {
-                        "service": service_name,
-                        "normalized_service": normalized_service,
-                        "action": action,
-                        "init_system": init_system.value,
-                        "command_executed": command,
-                        "exit_code": result.returncode,
-                        "result": parsed_result
-                    },
-                    "metadata": {
-                        "execution_time_ms": execution_time,
-                        "server": server,
-                        "timestamp": timestamp,
-                        "user": server_config.username
-                    },
-                    "error": None if result.returncode == 0 or action == "status" else {
-                        "code": "SERVICE_COMMAND_FAILED",
-                        "message": f"Service {action} failed with exit code {result.returncode}",
-                        "details": {"stderr": result.stderr, "stdout": result.stdout}
-                    }
-                }
+                # Return MCP-compliant response - data directly
+                service_status = parsed_result.get("status", "unknown")
+                
+                # For failed service commands (except status), raise MCP exception
+                if result.returncode != 0 and action != "status":
+                    raise MCPServiceError(
+                        message=f"Service {action} failed with exit code {result.returncode}",
+                        error_code="SERVICE_COMMAND_FAILED",
+                        details={
+                            "service": service_name,
+                            "action": action,
+                            "exit_code": result.returncode,
+                            "stderr": result.stderr,
+                            "stdout": result.stdout
+                        }
+                    )
+                
+                return MCPResponse.service_control_result(
+                    service=service_name,
+                    action=action,
+                    status=service_status,
+                    output=parsed_result.get("stdout", ""),
+                    server=server
+                )
                 
             finally:
                 await self.connection_manager.release_connection(server, conn)
                 
+        except (MCPServiceError, CommandSecurityError):
+            # Re-raise MCP and security exceptions
+            raise
+            
         except Exception as e:
             execution_time = int((time.time() - start_time) * 1000)
             logger.error(f"Service control failed: {e}")
             
-            return {
-                "success": False,
-                "data": None,
-                "metadata": {
-                    "execution_time_ms": execution_time,
+            # Convert to MCP exception
+            raise MCPServiceError(
+                message=str(e),
+                error_code=type(e).__name__.upper(),
+                details={
+                    "service": service_name,
+                    "action": action,
                     "server": server or "unknown",
-                    "timestamp": timestamp,
-                    "user": server_config.username if 'server_config' in locals() else "unknown"
-                },
-                "error": {
-                    "code": type(e).__name__,
-                    "message": str(e),
-                    "details": {"service": service_name, "action": action}
+                    "execution_time_ms": execution_time
                 }
-            }
+            )
     
     async def list_services(
         self,
@@ -228,46 +230,42 @@ class ServiceManagementTool:
                 
                 execution_time = int((time.time() - start_time) * 1000)
                 
-                return {
-                    "success": True,
-                    "data": {
-                        "services": services,
-                        "total_count": len(services),
-                        "init_system": init_system.value,
-                        "running_only": running_only,
-                        "pattern": pattern
-                    },
-                    "metadata": {
-                        "execution_time_ms": execution_time,
-                        "server": server,
-                        "timestamp": timestamp,
-                        "user": server_config.username
-                    },
-                    "error": None
-                }
+                # Return MCP-compliant response - data directly
+                filter_applied = None
+                if running_only:
+                    filter_applied = "running_only"
+                if pattern:
+                    filter_applied = f"pattern: {pattern}" if not filter_applied else f"{filter_applied}, pattern: {pattern}"
+                
+                return MCPResponse.service_list_result(
+                    services=services,
+                    total_count=len(services),
+                    server=server,
+                    filter_applied=filter_applied
+                )
                 
             finally:
                 await self.connection_manager.release_connection(server, conn)
                 
+        except MCPServiceError:
+            # Re-raise MCP exceptions
+            raise
+            
         except Exception as e:
             execution_time = int((time.time() - start_time) * 1000)
             logger.error(f"Service listing failed: {e}")
             
-            return {
-                "success": False,
-                "data": None,
-                "metadata": {
-                    "execution_time_ms": execution_time,
+            # Convert to MCP exception
+            raise MCPServiceError(
+                message=str(e),
+                error_code=type(e).__name__.upper(),
+                details={
+                    "running_only": running_only,
+                    "pattern": pattern,
                     "server": server or "unknown",
-                    "timestamp": timestamp,
-                    "user": server_config.username if 'server_config' in locals() else "unknown"
-                },
-                "error": {
-                    "code": type(e).__name__,
-                    "message": str(e),
-                    "details": {"running_only": running_only, "pattern": pattern}
+                    "execution_time_ms": execution_time
                 }
-            }
+            )
     
     async def get_service_logs(
         self,
@@ -352,46 +350,38 @@ class ServiceManagementTool:
                 
                 execution_time = int((time.time() - start_time) * 1000)
                 
-                return {
-                    "success": True,
-                    "data": {
-                        "service": service_name,
-                        "normalized_service": normalized_service,
-                        "logs": logs,
-                        "lines_requested": lines,
-                        "init_system": init_system.value
-                    },
-                    "metadata": {
-                        "execution_time_ms": execution_time,
-                        "server": server,
-                        "timestamp": timestamp,
-                        "user": server_config.username
-                    },
-                    "error": None
-                }
+                # Return MCP-compliant response - data directly
+                lines_returned = len(logs.split('\n')) if logs else 0
+                
+                return MCPResponse.service_logs_result(
+                    service=service_name,
+                    logs=logs,
+                    lines_returned=lines_returned,
+                    server=server
+                )
                 
             finally:
                 await self.connection_manager.release_connection(server, conn)
                 
+        except MCPServiceError:
+            # Re-raise MCP exceptions
+            raise
+            
         except Exception as e:
             execution_time = int((time.time() - start_time) * 1000)
             logger.error(f"Service logs retrieval failed: {e}")
             
-            return {
-                "success": False,
-                "data": None,
-                "metadata": {
-                    "execution_time_ms": execution_time,
+            # Convert to MCP exception
+            raise MCPServiceError(
+                message=str(e),
+                error_code=type(e).__name__.upper(),
+                details={
+                    "service": service_name,
+                    "lines": lines,
                     "server": server or "unknown",
-                    "timestamp": timestamp,
-                    "user": server_config.username if 'server_config' in locals() else "unknown"
-                },
-                "error": {
-                    "code": type(e).__name__,
-                    "message": str(e),
-                    "details": {"service": service_name, "lines": lines}
+                    "execution_time_ms": execution_time
                 }
-            }
+            )
     
     async def _get_server_info(self, server: str) -> Dict[str, Any]:
         """Get cached server information (init system, distro family).

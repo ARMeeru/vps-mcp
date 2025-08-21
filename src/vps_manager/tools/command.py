@@ -302,21 +302,13 @@ class CommandTool:
             self._background_job_runner(job, timeout)
         )
         
+        # Return MCP-compliant response for background job start
         return {
-            "success": True,
-            "data": {
-                "job_id": job_id,
-                "command": command,
-                "server": server,
-                "status": "started"
-            },
-            "metadata": {
-                "execution_time_ms": 0,
-                "server": server,
-                "timestamp": datetime.utcnow().isoformat() + "Z",
-                "user": self.connection_manager.pools[server].server_config.username
-            },
-            "error": None
+            "job_id": job_id,
+            "command": command,
+            "server": server,
+            "status": "started",
+            "timestamp": datetime.utcnow().isoformat() + "Z"
         }
     
     async def _background_job_runner(self, job: BackgroundJob, timeout: int) -> None:
@@ -339,9 +331,13 @@ class CommandTool:
             job.status = "completed"
             
         except Exception as e:
+            # Store MCP exception details for background jobs
             job.result = {
-                "success": False,
-                "error": {"code": type(e).__name__, "message": str(e)}
+                "error": {
+                    "code": type(e).__name__,
+                    "message": str(e),
+                    "details": getattr(e, "details", {})
+                }
             }
             job.status = "failed"
             logger.error(f"Background job {job.job_id} failed: {e}")
@@ -356,28 +352,23 @@ class CommandTool:
             Job status dictionary
         """
         if job_id not in self.background_jobs:
-            return {
-                "success": False,
-                "data": None,
-                "error": {
-                    "code": "JOB_NOT_FOUND",
-                    "message": f"Job {job_id} not found"
-                }
-            }
+            raise MCPCommandError(
+                message=f"Job {job_id} not found",
+                error_code="JOB_NOT_FOUND",
+                details={"job_id": job_id}
+            )
         
         job = self.background_jobs[job_id]
         
+        # Return MCP-compliant response for job status
         return {
-            "success": True,
-            "data": {
-                "job_id": job_id,
-                "command": job.command,
-                "server": job.server_name,
-                "status": job.status,
-                "start_time": job.start_time,
-                "result": job.result
-            },
-            "error": None
+            "job_id": job_id,
+            "command": job.command,
+            "server": job.server_name,
+            "status": job.status,
+            "start_time": job.start_time,
+            "result": job.result,
+            "timestamp": datetime.utcnow().isoformat() + "Z"
         }
     
     async def cancel_job(self, job_id: str) -> Dict[str, Any]:
@@ -390,13 +381,11 @@ class CommandTool:
             Cancellation result
         """
         if job_id not in self.background_jobs:
-            return {
-                "success": False,
-                "error": {
-                    "code": "JOB_NOT_FOUND",
-                    "message": f"Job {job_id} not found"
-                }
-            }
+            raise MCPCommandError(
+                message=f"Job {job_id} not found",
+                error_code="JOB_NOT_FOUND",
+                details={"job_id": job_id}
+            )
         
         job = self.background_jobs[job_id]
         
@@ -404,13 +393,11 @@ class CommandTool:
             job.task.cancel()
             job.status = "cancelled"
         
+        # Return MCP-compliant response for job cancellation
         return {
-            "success": True,
-            "data": {
-                "job_id": job_id,
-                "status": job.status
-            },
-            "error": None
+            "job_id": job_id,
+            "status": job.status,
+            "timestamp": datetime.utcnow().isoformat() + "Z"
         }
     
     def list_jobs(self, server: Optional[str] = None) -> Dict[str, Any]:
@@ -434,10 +421,12 @@ class CommandTool:
                     "start_time": job.start_time
                 })
         
+        # Return MCP-compliant response for job list
         return {
-            "success": True,
-            "data": {"jobs": jobs},
-            "error": None
+            "jobs": jobs,
+            "total_count": len(jobs),
+            "server_filter": server,
+            "timestamp": datetime.utcnow().isoformat() + "Z"
         }
     
     def cleanup_completed_jobs(self, max_age_hours: int = 24) -> int:

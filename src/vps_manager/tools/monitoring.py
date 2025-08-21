@@ -11,6 +11,7 @@ import re
 from ..connection_pool import ConnectionManager, SSHConnection
 from ..security import SecurityValidator
 from ..config import ServerConfig
+from ..utils.mcp_responses import MCPResponse, MCPMonitoringError
 
 logger = logging.getLogger(__name__)
 
@@ -82,18 +83,33 @@ class SystemMonitoringTool:
                 
                 execution_time = int((time.time() - start_time) * 1000)
                 
-                result = {
-                    "success": True,
-                    "data": status_data,
-                    "metadata": {
-                        "execution_time_ms": execution_time,
-                        "server": server,
-                        "timestamp": timestamp,
-                        "user": server_config.username,
-                        "cached": False
-                    },
-                    "error": None
-                }
+                # Extract required data for MCP response
+                cpu_percent = status_data.get("cpu", {}).get("usage_percent", 0.0)
+                memory_percent = status_data.get("memory", {}).get("usage_percent", 0.0)
+                disk_usage = status_data.get("disk", {})
+                load_avg_data = status_data.get("load_average", {})
+                load_average = [load_avg_data.get("1min", 0.0), load_avg_data.get("5min", 0.0), load_avg_data.get("15min", 0.0)]
+                uptime_seconds = status_data.get("uptime", {}).get("uptime_seconds", 0)
+                
+                # Prepare additional metrics for detailed mode
+                additional_metrics = None
+                if detailed:
+                    additional_metrics = {
+                        "network": status_data.get("network", {}),
+                        "processes": status_data.get("processes", {}),
+                        "system": status_data.get("system", {})
+                    }
+                
+                # Return MCP-compliant response - data directly
+                result = MCPResponse.system_status_result(
+                    cpu_percent=cpu_percent,
+                    memory_percent=memory_percent,
+                    disk_usage=disk_usage,
+                    load_average=load_average,
+                    uptime_seconds=uptime_seconds,
+                    server=server,
+                    additional_metrics=additional_metrics
+                )
                 
                 # Cache the result
                 self._cache[cache_key] = {
@@ -106,25 +122,23 @@ class SystemMonitoringTool:
             finally:
                 await self.connection_manager.release_connection(server, conn)
                 
+        except MCPMonitoringError:
+            # Re-raise MCP exceptions
+            raise
+            
         except Exception as e:
             execution_time = int((time.time() - start_time) * 1000)
             logger.error(f"System monitoring failed: {e}")
             
-            return {
-                "success": False,
-                "data": None,
-                "metadata": {
-                    "execution_time_ms": execution_time,
+            # Convert to MCP exception
+            raise MCPMonitoringError(
+                message=str(e),
+                error_code=type(e).__name__.upper(),
+                details={
                     "server": server or "unknown",
-                    "timestamp": timestamp,
-                    "user": server_config.username if 'server_config' in locals() else "unknown"
-                },
-                "error": {
-                    "code": type(e).__name__,
-                    "message": str(e),
-                    "details": {}
+                    "execution_time_ms": execution_time
                 }
-            }
+            )
     
     async def _collect_system_metrics(
         self, conn: SSHConnection, detailed: bool

@@ -154,25 +154,24 @@ class FileOperationsTool:
             finally:
                 await self.connection_manager.release_connection(server, conn)
                 
+        except (MCPFileError, PathSecurityError):
+            # Re-raise MCP and security exceptions
+            raise
+            
         except Exception as e:
             execution_time = int((time.time() - start_time) * 1000)
             logger.error(f"File read failed: {e}")
             
-            return {
-                "success": False,
-                "data": None,
-                "metadata": {
-                    "execution_time_ms": execution_time,
+            # Convert to MCP exception
+            raise MCPFileError(
+                message=str(e),
+                error_code=type(e).__name__.upper(),
+                details={
+                    "path": path,
                     "server": server or "unknown",
-                    "timestamp": timestamp,
-                    "user": server_config.username if 'server_config' in locals() else "unknown"
-                },
-                "error": {
-                    "code": type(e).__name__,
-                    "message": str(e),
-                    "details": {"path": path}
+                    "execution_time_ms": execution_time
                 }
-            }
+            )
     
     async def write_file(
         self,
@@ -270,23 +269,15 @@ class FileOperationsTool:
                     
                     execution_time = int((time.time() - start_time) * 1000)
                     
-                    return {
-                        "success": True,
-                        "data": {
-                            "path": str(resolved_path),
-                            "size_bytes": final_stat.size,
-                            "encoding": encoding,
-                            "backup_created": backup_path is not None,
-                            "backup_path": backup_path
-                        },
-                        "metadata": {
-                            "execution_time_ms": execution_time,
-                            "server": server,
-                            "timestamp": timestamp,
-                            "user": server_config.username
-                        },
-                        "error": None
-                    }
+                    # Return MCP-compliant response - data directly
+                    created_dirs = []
+                    return MCPResponse.file_write_result(
+                        path=str(resolved_path),
+                        size_bytes=final_stat.size,
+                        backup_path=backup_path,
+                        created_dirs=created_dirs if created_dirs else None,
+                        server=server
+                    )
                     
                 finally:
                     sftp.close()
@@ -294,25 +285,24 @@ class FileOperationsTool:
             finally:
                 await self.connection_manager.release_connection(server, conn)
                 
+        except (MCPFileError, PathSecurityError):
+            # Re-raise MCP and security exceptions
+            raise
+            
         except Exception as e:
             execution_time = int((time.time() - start_time) * 1000)
             logger.error(f"File write failed: {e}")
             
-            return {
-                "success": False,
-                "data": None,
-                "metadata": {
-                    "execution_time_ms": execution_time,
+            # Convert to MCP exception
+            raise MCPFileError(
+                message=str(e),
+                error_code=type(e).__name__.upper(),
+                details={
+                    "path": path,
                     "server": server or "unknown",
-                    "timestamp": timestamp,
-                    "user": server_config.username if 'server_config' in locals() else "unknown"
-                },
-                "error": {
-                    "code": type(e).__name__,
-                    "message": str(e),
-                    "details": {"path": path}
+                    "execution_time_ms": execution_time
                 }
-            }
+            )
     
     async def upload_file(
         self,
@@ -392,22 +382,14 @@ class FileOperationsTool:
                     
                     execution_time = int((time.time() - start_time) * 1000)
                     
-                    return {
-                        "success": True,
-                        "data": {
-                            "local_path": str(local_file),
-                            "remote_path": str(resolved_path),
-                            "size_bytes": file_size,
-                            "transfer_rate_mbps": (file_size / (1024 * 1024)) / (execution_time / 1000) if execution_time > 0 else 0
-                        },
-                        "metadata": {
-                            "execution_time_ms": execution_time,
-                            "server": server,
-                            "timestamp": timestamp,
-                            "user": server_config.username
-                        },
-                        "error": None
-                    }
+                    # Return MCP-compliant response - data directly
+                    return MCPResponse.file_transfer_result(
+                        local_path=str(local_file),
+                        remote_path=str(resolved_path),
+                        size_bytes=file_size,
+                        direction="upload",
+                        server=server
+                    )
                     
                 finally:
                     sftp.close()
@@ -415,25 +397,25 @@ class FileOperationsTool:
             finally:
                 await self.connection_manager.release_connection(server, conn)
                 
+        except (MCPFileError, PathSecurityError):
+            # Re-raise MCP and security exceptions
+            raise
+            
         except Exception as e:
             execution_time = int((time.time() - start_time) * 1000)
             logger.error(f"File upload failed: {e}")
             
-            return {
-                "success": False,
-                "data": None,
-                "metadata": {
-                    "execution_time_ms": execution_time,
+            # Convert to MCP exception
+            raise MCPFileError(
+                message=str(e),
+                error_code=type(e).__name__.upper(),
+                details={
+                    "local_path": local_path,
+                    "remote_path": remote_path,
                     "server": server or "unknown",
-                    "timestamp": timestamp,
-                    "user": server_config.username if 'server_config' in locals() else "unknown"
-                },
-                "error": {
-                    "code": type(e).__name__,
-                    "message": str(e),
-                    "details": {"local_path": local_path, "remote_path": remote_path}
+                    "execution_time_ms": execution_time
                 }
-            }
+            )
     
     async def download_file(
         self,
@@ -499,22 +481,14 @@ class FileOperationsTool:
                     
                     execution_time = int((time.time() - start_time) * 1000)
                     
-                    return {
-                        "success": True,
-                        "data": {
-                            "remote_path": str(resolved_path),
-                            "local_path": str(local_file),
-                            "size_bytes": file_size,
-                            "transfer_rate_mbps": (file_size / (1024 * 1024)) / (execution_time / 1000) if execution_time > 0 else 0
-                        },
-                        "metadata": {
-                            "execution_time_ms": execution_time,
-                            "server": server,
-                            "timestamp": timestamp,
-                            "user": server_config.username
-                        },
-                        "error": None
-                    }
+                    # Return MCP-compliant response - data directly
+                    return MCPResponse.file_transfer_result(
+                        local_path=str(local_file),
+                        remote_path=str(resolved_path),
+                        size_bytes=file_size,
+                        direction="download",
+                        server=server
+                    )
                     
                 finally:
                     sftp.close()
@@ -522,25 +496,25 @@ class FileOperationsTool:
             finally:
                 await self.connection_manager.release_connection(server, conn)
                 
+        except (MCPFileError, PathSecurityError):
+            # Re-raise MCP and security exceptions
+            raise
+            
         except Exception as e:
             execution_time = int((time.time() - start_time) * 1000)
             logger.error(f"File download failed: {e}")
             
-            return {
-                "success": False,
-                "data": None,
-                "metadata": {
-                    "execution_time_ms": execution_time,
+            # Convert to MCP exception
+            raise MCPFileError(
+                message=str(e),
+                error_code=type(e).__name__.upper(),
+                details={
+                    "remote_path": remote_path,
+                    "local_path": local_path,
                     "server": server or "unknown",
-                    "timestamp": timestamp,
-                    "user": server_config.username if 'server_config' in locals() else "unknown"
-                },
-                "error": {
-                    "code": type(e).__name__,
-                    "message": str(e),
-                    "details": {"remote_path": remote_path, "local_path": local_path}
+                    "execution_time_ms": execution_time
                 }
-            }
+            )
     
     async def _is_binary_file(self, sftp: asyncssh.SFTPClient, file_path: Path) -> bool:
         """Check if a file is binary by reading the first few bytes.
