@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import asyncssh
+import asyncssh.sftp
 
 from ..connection_pool import ConnectionManager
 from ..security import PathSecurityError, SecurityValidator
@@ -57,13 +58,21 @@ class FileOperationsTool:
 
         try:
             # Determine target server
+            logger.debug(f"read_file called: path={path}, server={server}")
             if server is None:
                 servers = self.connection_manager.list_servers()
+                logger.debug(f"Available servers: {servers}")
                 if not servers:
                     raise FileOperationError("No servers configured")
                 server = servers[0]
+                logger.debug(f"Selected server: {server}")
+                
+                # Validation: ensure server is a valid string
+                if not isinstance(server, str) or not server.strip():
+                    raise FileOperationError(f"Invalid server name: {repr(server)}")
 
             # Get server configuration
+            logger.debug(f"Checking if server '{server}' exists in pools: {list(self.connection_manager.pools.keys())}")
             if server not in self.connection_manager.pools:
                 raise FileOperationError(f"Server {server} not found")
 
@@ -106,7 +115,8 @@ class FileOperationsTool:
 
                     if is_binary:
                         # Read as binary and encode as base64
-                        content = await sftp.readfile(str(resolved_path))
+                        async with sftp.open(str(resolved_path), 'rb') as f:
+                            content = await f.read()
                         content_b64 = base64.b64encode(content).decode("ascii")
 
                         result_data = {
@@ -119,8 +129,8 @@ class FileOperationsTool:
                     else:
                         # Read as text
                         try:
-                            content_bytes = await sftp.readfile(str(resolved_path))
-                            content_text = content_bytes.decode(encoding)
+                            async with sftp.open(str(resolved_path), 'r', encoding=encoding) as f:
+                                content_text = await f.read()
 
                             result_data = {
                                 "content": content_text,
@@ -133,7 +143,9 @@ class FileOperationsTool:
                                 ),
                             }
                         except UnicodeDecodeError:
-                            # Fallback to base64 if text decoding fails
+                            # Fallback to binary read if text decoding fails
+                            async with sftp.open(str(resolved_path), 'rb') as f:
+                                content_bytes = await f.read()
                             content_b64 = base64.b64encode(content_bytes).decode(
                                 "ascii"
                             )
@@ -158,7 +170,7 @@ class FileOperationsTool:
                     )
 
                 finally:
-                    sftp.close()
+                    sftp.exit()
 
             finally:
                 await self.connection_manager.release_connection(server, conn)
@@ -260,7 +272,7 @@ class FileOperationsTool:
                             backup_path = f"{resolved_path}.bak"
                             await sftp.rename(str(resolved_path), backup_path)
                             logger.info(f"Created backup: {backup_path}")
-                        except FileNotFoundError:
+                        except (FileNotFoundError, asyncssh.sftp.SFTPNoSuchFile):
                             # File doesn't exist, no backup needed
                             pass
 
@@ -268,7 +280,8 @@ class FileOperationsTool:
                     # rename)
                     temp_path = f"{resolved_path}.tmp"
                     try:
-                        await sftp.writefile(temp_path, content_bytes)
+                        async with sftp.open(temp_path, 'wb') as f:
+                            await f.write(content_bytes)
                         await sftp.rename(temp_path, str(resolved_path))
                     except Exception as e:
                         # Clean up temp file on error
@@ -294,7 +307,7 @@ class FileOperationsTool:
                     )
 
                 finally:
-                    sftp.close()
+                    sftp.exit()
 
             finally:
                 await self.connection_manager.release_connection(server, conn)
@@ -414,7 +427,7 @@ class FileOperationsTool:
                     )
 
                 finally:
-                    sftp.close()
+                    sftp.exit()
 
             finally:
                 await self.connection_manager.release_connection(server, conn)
@@ -518,7 +531,7 @@ class FileOperationsTool:
                     )
 
                 finally:
-                    sftp.close()
+                    sftp.exit()
 
             finally:
                 await self.connection_manager.release_connection(server, conn)

@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from mcp.types import TextContent
 
-from src.vps_manager.server import VPSManagerServer
+from src.vps_manager.server import MCPVPSServer
 
 
 class TestMCPServerIntegration:
@@ -20,7 +20,7 @@ class TestMCPServerIntegration:
             "src.vps_manager.connection_pool.ConnectionManager",
             return_value=mock_connection_manager,
         ):
-            server = VPSManagerServer(sample_vps_config)
+            server = MCPVPSServer(sample_vps_config)
             await server.initialize()
             yield server
             await server.cleanup()
@@ -371,7 +371,7 @@ class TestMCPServerIntegration:
             mock_manager = MockManager.return_value
             mock_manager.cleanup = AsyncMock()
 
-            server = VPSManagerServer(sample_vps_config)
+            server = MCPVPSServer(sample_vps_config)
 
             # Test initialization
             await server.initialize()
