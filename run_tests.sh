@@ -34,7 +34,7 @@ case "${1:-all}" in
         print_status "Running unit tests..." $YELLOW
         pytest tests/unit/ -v
         ;;
-    "integration") 
+    "integration")
         print_status "Running integration tests..." $YELLOW
         pytest tests/integration/ -v
         ;;
@@ -50,16 +50,16 @@ case "${1:-all}" in
     "lint")
         print_status "Running linting..." $YELLOW
         pip install flake8 black isort mypy
-        
+
         print_status "Running flake8..." $YELLOW
         flake8 src/ tests/ || true
-        
+
         print_status "Running black (check only)..." $YELLOW
         black --check src/ tests/ || true
-        
+
         print_status "Running isort (check only)..." $YELLOW
         isort --check-only src/ tests/ || true
-        
+
         print_status "Running mypy..." $YELLOW
         mypy src/ || true
         ;;
@@ -78,8 +78,8 @@ esac
 
 # Check test results
 if [ $? -eq 0 ]; then
-    print_status "✅ All tests passed!" $GREEN
+    print_status "All tests passed!" $GREEN
 else
-    print_status "❌ Some tests failed!" $RED
+    print_status "Some tests failed!" $RED
     exit 1
 fi

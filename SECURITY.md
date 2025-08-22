@@ -6,14 +6,15 @@ This document outlines security considerations, best practices, and validation m
 
 1. [Security Architecture](#security-architecture)
 2. [Command Validation](#command-validation)
-3. [File System Security](#file-system-security)
-4. [SSH Security](#ssh-security)
-5. [Network Security](#network-security)
-6. [Audit and Logging](#audit-and-logging)
-7. [Best Practices](#best-practices)
-8. [Security Configuration](#security-configuration)
-9. [Threat Model](#threat-model)
-10. [Incident Response](#incident-response)
+3. [Command Queuing Security](#command-queuing-security)
+4. [File System Security](#file-system-security)
+5. [SSH Security](#ssh-security)
+6. [Network Security](#network-security)
+7. [Audit and Logging](#audit-and-logging)
+8. [Best Practices](#best-practices)
+9. [Security Configuration](#security-configuration)
+10. [Threat Model](#threat-model)
+11. [Incident Response](#incident-response)
 
 ## Security Architecture
 
@@ -133,6 +134,110 @@ vps_manager:
       - "uptime"
 ```
 
+## Command Queuing Security
+
+### Rate Limiting Protection
+
+The command queuing system provides built-in protection against abuse:
+
+#### Per-Server Rate Limits
+```yaml
+# Default rate limiting (configurable per server)
+queue_settings:
+  max_concurrent: 3        # Maximum concurrent commands per server
+  rate_limit: 5           # Commands per second limit
+  burst_limit: 10         # Maximum burst size
+```
+
+#### Queue-based DoS Prevention
+- **Command flooding protection**: Rate limiting prevents overwhelming servers
+- **Resource exhaustion prevention**: Concurrency limits protect server resources
+- **Priority queuing**: Critical operations bypass normal queues
+- **Automatic cleanup**: Old queue results are automatically purged
+
+### Queue Security Considerations
+
+#### Command Isolation
+- Each queued command runs in isolation
+- Commands cannot access other queue entries
+- Memory cleanup prevents information leakage
+- Background jobs are tracked separately
+
+#### Priority Abuse Prevention
+```python
+# Priority validation in queue system
+priority_limits = {
+    "critical": 1,      # Max 1 critical command per server
+    "high": 3,          # Max 3 high priority commands
+    "normal": 10,       # Max 10 normal commands
+    "low": 50          # Max 50 low priority commands
+}
+```
+
+#### Queue Monitoring and Alerts
+- Monitor queue depth for anomalies
+- Alert on unusual command patterns
+- Track rate limit violations
+- Log queue metrics for security analysis
+
+### Streaming Security
+
+#### Output Sanitization
+- Real-time streaming output is sanitized
+- Sensitive information is filtered during streaming
+- Command output is limited in size
+- Streaming connections are automatically terminated on timeout
+
+#### Stream Access Control
+- Only the original requester can access stream output
+- Stream data is not cached beyond completion
+- Failed streams are cleaned up immediately
+- No persistent stream storage
+
+### Queue Configuration Best Practices
+
+#### Production Settings
+```yaml
+queue_security:
+  max_queue_size: 100           # Limit queue depth
+  max_execution_time: 300       # 5 minute command timeout
+  cleanup_interval: 3600        # Hourly cleanup
+  result_retention: 24          # 24 hour result retention
+  rate_limit_window: 60         # 1 minute rate limit window
+```
+
+#### Monitoring Configuration
+```yaml
+queue_monitoring:
+  enable_metrics: true
+  alert_thresholds:
+    queue_depth: 50
+    error_rate: 0.1             # 10% error rate threshold
+    rate_limit_violations: 5    # 5 violations per hour
+```
+
+### Security Audit for Queues
+
+#### Queue Metrics to Monitor
+- Command execution frequency per server
+- Queue depth trends over time
+- Rate limit violation patterns
+- Priority escalation attempts
+- Resource usage during queue processing
+
+#### Queue Security Events
+```json
+{
+  "event_type": "queue_security_violation",
+  "timestamp": "2024-01-01T12:05:00Z",
+  "server": "production-web",
+  "violation_type": "rate_limit_exceeded",
+  "commands_per_second": 15,
+  "limit": 5,
+  "action": "commands_queued"
+}
+```
+
 ## File System Security
 
 ### Path Validation
@@ -192,7 +297,7 @@ servers:
     username: "deploy"
     password: "insecure-password"
 
-# ✅ CORRECT - SSH key authentication
+# CORRECT - SSH key authentication
 servers:
   web-server:
     host: "web.example.com"
@@ -600,5 +705,3 @@ grep -E "(rm -rf|chmod 777|killall)" /var/log/vps-manager.log
 - Penetration testing
 
 ---
-
-**Remember: Security is an ongoing process, not a one-time configuration. Regularly review and update your security posture based on new threats and requirements.**

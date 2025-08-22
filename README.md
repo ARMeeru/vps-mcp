@@ -8,27 +8,31 @@
 
 ## Features
 
-### 🔧 **Core Functionality**
-- **SSH Command Execution**: Execute shell commands with security validation
+### **Core Functionality**
+- **SSH Command Execution**: Execute shell commands with security validation and real-time streaming
+- **Command Queuing**: Priority-based command queuing with rate limiting and concurrency control
 - **File Operations**: Upload, download, read, and write files via SFTP
 - **System Monitoring**: Real-time system metrics (CPU, memory, disk, processes)
-- **Service Management**: Control systemd, upstart, and SysV init services
+- **Service Management**: Control systemd, upstart, and SysV init services with container-aware detection
 - **Multi-Server Support**: Manage multiple VPS servers from a single interface
 
-### 🔒 **Security Features**
+### **Security Features**
 - **Command Validation**: Blocks dangerous commands (rm -rf /, fork bombs, etc.)
 - **Path Restrictions**: Restricts file access to configured allowed paths
 - **SSH Key Authentication**: Only supports SSH key-based authentication
 - **Sudo Password Management**: Secure in-memory sudo password handling
 - **Audit Logging**: Comprehensive logging of all operations
 
-### ⚡ **Performance & Reliability**
+### **Performance & Reliability**
 - **Connection Pooling**: Maintains multiple SSH connections per server
+- **Command Queuing**: Rate-limited command execution with priority support
+- **Real-time Streaming**: Live output streaming for long-running commands
 - **Auto-Reconnection**: Automatic reconnection with exponential backoff
 - **Health Monitoring**: Continuous connection health checks
+- **Container Support**: Enhanced init system detection for Docker/Podman environments
 - **Async Operations**: Full async/await support for better performance
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Python 3.9+
@@ -193,16 +197,24 @@ python -m vps_manager.server --config config/servers.yaml --log-level DEBUG
 ### Available MCP Tools
 
 #### 1. **exec_command**
-Execute shell commands on VPS servers.
+Execute shell commands on VPS servers with streaming and queuing support.
 
 ```json
 {
   "command": "ls -la /var/www",
   "server": "production-web",
   "timeout": 30,
-  "background": false
+  "background": false,
+  "stream_output": false,
+  "priority": "normal",
+  "use_queue": true
 }
 ```
+
+**New Parameters:**
+- `stream_output` (boolean): Enable real-time output streaming for long commands
+- `priority` (string): Queue priority - "low", "normal", "high", or "critical"
+- `use_queue` (boolean): Force use or bypass of the command queue system
 
 #### 2. **read_file**
 Read file contents from VPS servers.
@@ -295,6 +307,30 @@ Retrieve service logs.
 }
 ```
 
+#### 10. **get_queue_status**
+Monitor command queue status and metrics.
+
+```json
+{
+  "server": "production-web"
+}
+```
+
+**Response includes:**
+- Queue size and execution metrics
+- Rate limiting status
+- Concurrent command counts
+- Success/failure statistics
+
+#### 11. **cleanup_queue_results**
+Clean up old command queue results to free memory.
+
+```json
+{
+  "max_age_hours": 24
+}
+```
+
 ### Example Conversations with Claude
 
 **"Check the system status of my web server"**
@@ -319,6 +355,33 @@ System Status:
 
 3. Using exec_command to verify web server response...
    ✓ Web server responding on port 80
+```
+
+**"Run a system update with real-time output"**
+```
+Using exec_command with stream_output=true and high priority...
+
+Starting system package update:
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+[Real-time streaming output continues...]
+Fetching http://security.ubuntu.com/ubuntu jammy-security InRelease
+Get:1 http://archive.ubuntu.com/ubuntu jammy InRelease [270 kB]
+...
+✓ Update completed successfully with streaming output
+```
+
+**"Check command queue status across all servers"**
+```
+Using get_queue_status tool...
+
+Queue Status Summary:
+- production-web: 2 commands queued, 1 executing, rate limit: 5/sec
+- staging-db: 0 commands queued, 0 executing, rate limit: 3/sec
+- monitoring: 1 command queued, 0 executing, rate limit: 10/sec
+
+Total metrics: 15 commands executed, 2 failed, avg execution time: 1.2s
 ```
 
 ## Security Best Practices
@@ -491,15 +554,28 @@ ssh-keygen -t rsa -b 4096 -f ~/.ssh/test_key -C "test@example.com"
 ### Key Components
 
 1. **MCP Server** (`server.py`): Main MCP protocol handler
-2. **Connection Pool** (`connection_pool.py`): SSH connection management
-3. **Security Validator** (`security.py`): Command and path validation
-4. **Tools**: Individual operation handlers
-   - Command execution (`tools/command.py`)
+2. **Connection Pool** (`connection_pool.py`): SSH connection management with health checks
+3. **Command Queue** (`queue.py`): Priority-based command queuing and rate limiting
+4. **Security Validator** (`security.py`): Command and path validation
+5. **Enhanced Tools**: Individual operation handlers
+   - Command execution with streaming (`tools/command.py`)
    - File operations (`tools/file_ops.py`)
    - System monitoring (`tools/monitoring.py`)
-   - Service management (`tools/services.py`)
+   - Container-aware service management (`tools/services.py`)
+6. **Enhanced Utilities**:
+   - Container-aware init system detection (`utils/distro.py`)
+   - Secure sudo handling (`utils/secure_sudo.py`)
+   - Error handling and MCP responses (`utils/error_handling.py`, `utils/mcp_responses.py`)
 
 ## Changelog
+
+### v0.2.0 (Latest - GitHub Issues Fix Release)
+- **Real-time Command Streaming**: Live output streaming for long-running commands
+- **Command Queuing System**: Priority-based queuing with rate limiting and concurrency control
+- **Container-aware Init Detection**: Enhanced systemd detection for Docker/Podman environments
+- **Queue Management Tools**: New MCP tools for monitoring and managing command queues
+- **Enhanced Error Handling**: Improved error messages and graceful fallbacks
+- **Performance Optimizations**: Better resource management and connection pooling
 
 ### v0.1.0 (Initial Release)
 - MCP protocol implementation
@@ -530,7 +606,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - **Documentation**: This README and inline code documentation
 - **Security Issues**: Report privately via email
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Quick Start](#-quick-start)
 - [Installation](#installation)
@@ -543,41 +619,51 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - [Contributing](#contributing)
 - [Support](#support)
 
-## 🔗 Related Projects
+## Related Projects
 
 - [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) - MCP Python implementation
 - [Claude Desktop](https://claude.ai/desktop) - MCP client with desktop app
 - [Other MCP Servers](https://github.com/modelcontextprotocol/servers) - Community MCP servers
 
-## 📚 Additional Resources
+## Additional Resources
 
 - **[INSTALL.md](INSTALL.md)** - Detailed installation guide
 - **[SECURITY.md](SECURITY.md)** - Comprehensive security guide and best practices
 - **[Templates](templates/)** - Configuration templates
 - **[Examples](examples/)** - Usage examples and integrations
 
-## 🏷️ Version History
+## Version History
 
-### v0.1.0 (Current)
-- ✅ MCP protocol implementation
-- ✅ SSH connection pooling with health checks
-- ✅ Comprehensive security validation
-- ✅ File operations via SFTP
-- ✅ System monitoring and metrics
-- ✅ Service management (systemd/sysv/upstart)
-- ✅ Enhanced error handling and user feedback
-- ✅ Production packaging and deployment
-- ✅ Complete test suite
-- ✅ Documentation and security guides
+### v0.2.0 (Current - GitHub Issues Fix Release)
+- Real-time command output streaming
+- Priority-based command queuing with rate limiting
+- Container-aware init system detection (Docker/Podman)
+- Queue monitoring and management tools
+- Enhanced streaming for long-running operations
+- Improved error handling and graceful fallbacks
+- Performance optimizations and resource management
+
+### v0.1.0 (Previous)
+- MCP protocol implementation
+- SSH connection pooling with health checks
+- Comprehensive security validation
+- File operations via SFTP
+- System monitoring and metrics
+- Service management (systemd/sysv/upstart)
+- Enhanced error handling and user feedback
+- Production packaging and deployment
+- Complete test suite
+- Documentation and security guides
 
 ### Roadmap
-- 🔄 Web UI for server management
-- 🔄 Metrics dashboard
-- 🔄 Multi-factor authentication support
-- 🔄 Container management integration
-- 🔄 Backup and restoration tools
+- Web UI for server management
+- Metrics dashboard and real-time monitoring
+- Multi-factor authentication support
+- Container management integration (Docker/K8s)
+- Backup and restoration tools
+- Advanced queue scheduling and automation
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - [Model Context Protocol](https://modelcontextprotocol.io/) for the MCP specification
 - [AsyncSSH](https://github.com/ronf/asyncssh) for robust SSH connectivity
@@ -587,6 +673,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Made with ❤️ for the MCP community**
+**Made with love for the MCP community**
 
 *Securely manage your VPS infrastructure with AI assistance*

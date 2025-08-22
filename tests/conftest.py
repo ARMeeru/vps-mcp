@@ -1,11 +1,12 @@
 """Pytest configuration and shared fixtures."""
 
-import pytest
-import tempfile
-import os
-from pathlib import Path
-from unittest.mock import MagicMock, AsyncMock
 import asyncio
+import os
+import tempfile
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from src.vps_manager.config import ServerConfig, VPSManagerConfig
 from src.vps_manager.connection_pool import ConnectionManager, SSHConnection
@@ -16,11 +17,17 @@ from src.vps_manager.security import SecurityValidator
 def temp_ssh_key():
     """Create a temporary SSH key file for testing."""
     with tempfile.NamedTemporaryFile(delete=False) as key_file:
-        key_file.write(b"-----BEGIN OPENSSH PRIVATE KEY-----\nfake key content for testing\n-----END OPENSSH PRIVATE KEY-----")
+        key_file.write(
+            (
+                b"-----BEGIN OPENSSH PRIVATE KEY-----\n"
+                b"fake key content for testing\n"
+                b"-----END OPENSSH PRIVATE KEY-----"
+            )
+        )
         key_path = key_file.name
-    
+
     yield key_path
-    
+
     # Cleanup
     try:
         os.unlink(key_path)
@@ -41,7 +48,7 @@ def sample_server_config(temp_ssh_key):
         blocked_commands=["test_blocked"],
         max_file_size_mb=10,
         connection_timeout=15,
-        command_timeout=60
+        command_timeout=60,
     )
 
 
@@ -55,7 +62,7 @@ def sample_vps_config(sample_server_config):
         connection_retry_max_delay=10,
         log_level="DEBUG",
         log_dir="/tmp/test-logs",
-        audit_log_enabled=True
+        audit_log_enabled=True,
     )
 
 
@@ -67,7 +74,7 @@ def mock_ssh_connection():
     mock_conn.is_closing.return_value = False
     mock_conn.close = MagicMock()
     mock_conn.wait_closed = AsyncMock()
-    
+
     # Mock SFTP client
     mock_sftp = MagicMock()
     mock_sftp.stat = AsyncMock()
@@ -77,7 +84,7 @@ def mock_ssh_connection():
     mock_sftp.get = AsyncMock()
     mock_sftp.close = MagicMock()
     mock_conn.start_sftp_client = AsyncMock(return_value=mock_sftp)
-    
+
     return mock_conn
 
 
@@ -87,7 +94,7 @@ def mock_ssh_connection_wrapper(mock_ssh_connection):
     wrapper = SSHConnection(
         connection=mock_ssh_connection,
         server_name="test-server",
-        connection_id="test-conn-1"
+        connection_id="test-conn-1",
     )
     wrapper.state = wrapper.state.READY
     return wrapper
@@ -100,12 +107,14 @@ def mock_connection_manager(sample_server_config, mock_ssh_connection_wrapper):
     manager.pools = {"test-server": MagicMock()}
     manager.pools["test-server"].server_config = sample_server_config
     manager.pools["test-server"].sudo_password = None
-    
+
     manager.get_connection = AsyncMock(return_value=mock_ssh_connection_wrapper)
     manager.release_connection = AsyncMock()
     manager.list_servers = MagicMock(return_value=["test-server"])
-    manager.get_status_all = MagicMock(return_value={"test-server": {"status": "healthy"}})
-    
+    manager.get_status_all = MagicMock(
+        return_value={"test-server": {"status": "healthy"}}
+    )
+
     return manager
 
 
@@ -122,9 +131,10 @@ def temp_directory():
     """Create a temporary directory for testing."""
     temp_dir = tempfile.mkdtemp()
     yield Path(temp_dir)
-    
+
     # Cleanup
     import shutil
+
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
@@ -167,7 +177,7 @@ def sample_file_content():
 @pytest.fixture
 def sample_binary_content():
     """Sample binary content for testing."""
-    return b"\x00\x01\x02\x03\xFF\xFE\xFD\xFC"
+    return b"\x00\x01\x02\x03\xff\xfe\xfd\xfc"
 
 
 @pytest.fixture
@@ -179,7 +189,7 @@ def system_status_data():
             "total_bytes": 8589934592,
             "used_bytes": 4294967296,
             "free_bytes": 4294967296,
-            "usage_percent": 50.0
+            "usage_percent": 50.0,
         },
         "disk": {
             "total_bytes": 107374182400,
@@ -193,22 +203,24 @@ def system_status_data():
                     "total_bytes": 107374182400,
                     "used_bytes": 53687091200,
                     "available_bytes": 53687091200,
-                    "usage_percent": 50.0
+                    "usage_percent": 50.0,
                 }
-            ]
+            ],
         },
         "load_average": {"1min": 0.5, "5min": 0.3, "15min": 0.2},
-        "uptime": {"uptime_seconds": 86400, "uptime_formatted": "1d 0h 0m"}
+        "uptime": {"uptime_seconds": 86400, "uptime_formatted": "1d 0h 0m"},
     }
 
 
 # Async test helpers
 def async_test(coro):
     """Helper to run async tests in sync context."""
+
     def wrapper(*args, **kwargs):
         loop = asyncio.new_event_loop()
         try:
             return loop.run_until_complete(coro(*args, **kwargs))
         finally:
             loop.close()
+
     return wrapper

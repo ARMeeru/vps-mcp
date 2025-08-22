@@ -87,7 +87,7 @@ class VPSValidationSuite:
             # Update summary
             if server_results["overall_success"]:
                 self.results["summary"]["successful_servers"] += 1
-                logger.info(f"✅ Server {server_name}: PASSED")
+                logger.info(f"Server {server_name}: PASSED")
             else:
                 self.results["summary"]["failed_servers"] += 1
                 logger.error(f"❌ Server {server_name}: FAILED")
@@ -684,7 +684,7 @@ class VPSValidationSuite:
         print("-" * 40)
 
         for server_name, server_results in self.results["servers"].items():
-            status = "✅ PASSED" if server_results["overall_success"] else "❌ FAILED"
+            status = "PASSED" if server_results["overall_success"] else "FAILED"
             error_count = server_results["error_count"]
             warning_count = server_results["warning_count"]
 
@@ -700,7 +700,7 @@ class VPSValidationSuite:
         if overall_success:
             print("🎉 OVERALL RESULT: ALL VALIDATIONS PASSED!")
         else:
-            print("⚠️  OVERALL RESULT: SOME VALIDATIONS FAILED")
+            print("OVERALL RESULT: SOME VALIDATIONS FAILED")
             print("Check the detailed logs above for specific issues.")
         print("="*80)
 

@@ -296,7 +296,8 @@ benchmark_results/
 # Claude Desktop user configurations
 ~/Library/Application Support/Claude/
 ~/.config/Claude/
-%APPDATA%\Claude\
+# Windows Claude config directory
+# %APPDATA%\Claude\
 
 # MCP server state files
 .mcp_state

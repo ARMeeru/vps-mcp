@@ -12,7 +12,7 @@ paramiko>=3.0.0
 pyyaml>=6.0
 pydantic>=2.0.0
 
-# Utilities  
+# Utilities
 tenacity>=8.2.0
 
 # Development dependencies (install with: pip install -r requirements-dev.txt)

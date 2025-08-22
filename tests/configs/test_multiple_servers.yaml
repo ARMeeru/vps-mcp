@@ -21,6 +21,15 @@ vps_manager:
     file: "/tmp/vps-manager-test.log"
     max_size: "10MB"
 
+  # Queue settings for testing (new in v0.2.0)
+  queue:
+    enable_queuing: true
+    max_concurrent_per_server: 2      # Lower for testing
+    default_rate_limit: 3             # Lower rate for testing
+    max_queue_size: 50                # Smaller queue for testing
+    result_retention_hours: 1         # Shorter retention for testing
+    cleanup_interval_hours: 0.5       # More frequent cleanup for testing
+
 # Test servers for different providers and configurations
 servers:
   # DigitalOcean Ubuntu server

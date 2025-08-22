@@ -154,12 +154,32 @@ vps_manager:
 
 Once configured, Claude Desktop will have access to these tools:
 
-- **exec_command**: Execute shell commands safely
-- **read_file**: Read file contents
-- **write_file**: Write or modify files
-- **list_directory**: List directory contents
-- **system_info**: Get system information and resource usage
-- **service_management**: Manage systemd services
+### Core Command Execution
+- **exec_command**: Execute shell commands safely with real-time streaming and queuing support
+  - Real-time output streaming for long-running commands
+  - Priority-based command queuing (low/normal/high/critical)
+  - Rate limiting and concurrency control per server
+
+### File Operations
+- **read_file**: Read file contents from servers
+- **write_file**: Write or modify files with backup support
+- **upload_file**: Upload files from local to remote servers
+- **download_file**: Download files from remote to local
+
+### System Management
+- **get_system_status**: Get comprehensive system metrics and resource usage
+- **service_control**: Control system services (start/stop/restart/status)
+- **list_services**: List and filter system services
+- **get_service_logs**: Retrieve service logs
+
+### Queue Management (New!)
+- **get_queue_status**: Monitor command queue status and metrics across servers
+- **cleanup_queue_results**: Clean up old command results to free memory
+
+### Enhanced Features
+- **Container Support**: Enhanced detection for Docker/Podman environments
+- **Auto-Recovery**: Automatic reconnection and health monitoring
+- **Security Validation**: Comprehensive command and path validation
 
 ## Troubleshooting
 

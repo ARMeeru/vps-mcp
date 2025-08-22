@@ -20,6 +20,15 @@ vps_manager:
     enable_command_validation: true
     log_all_commands: true
 
+  # Command queue settings (new in v0.2.0)
+  queue:
+    enable_queuing: true # Enable command queuing system
+    max_concurrent_per_server: 3 # Max concurrent commands per server
+    default_rate_limit: 5 # Commands per second (default)
+    max_queue_size: 100 # Maximum queue depth
+    result_retention_hours: 24 # How long to keep command results
+    cleanup_interval_hours: 1 # How often to clean up old results
+
   # Logging configuration
   logging:
     level: "INFO"
@@ -48,6 +57,17 @@ servers:
       - "/home/myuser"
       - "/var/www"
       - "/opt/myapp"
+
+    # Optional: Server-specific queue settings (new in v0.2.0)
+    queue_settings:
+      max_concurrent: 5 # Override default concurrent limit
+      rate_limit: 10 # Override default rate limit
+      priority_rate_limit: # Rate limits by priority
+        critical: 20 # Critical commands: 20/sec
+        high: 15 # High priority: 15/sec
+        normal: 10 # Normal priority: 10/sec
+        low: 5 # Low priority: 5/sec
+
 
   # Add more servers as needed
   # web-server:

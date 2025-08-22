@@ -20,7 +20,7 @@ with open('requirements.txt', 'r', encoding='utf-8') as f:
 
 setup(
     name="mcp-vps-manager",
-    version="0.1.0",
+    version="0.2.0",
     description="A secure, production-ready MCP server for managing Virtual Private Servers via SSH",
     long_description=long_description,
     long_description_content_type="text/markdown",

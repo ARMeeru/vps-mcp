@@ -85,12 +85,7 @@ Test with real VPS providers to ensure compatibility:
 
 #### Supported Providers
 
-- **DigitalOcean** (Ubuntu, Debian, CentOS)
-- **AWS EC2** (Amazon Linux, Ubuntu)
-- **Linode** (Ubuntu, CentOS, Debian)
-- **Vultr** (Ubuntu, CentOS, Debian)
-- **Hetzner** (Ubuntu, Debian)
-- **Google Cloud Platform** (Ubuntu, Debian)
+- Any VPS with SSH access (Better to use a non-root sudo user)
 
 #### Test Configuration
 
@@ -158,75 +153,100 @@ python validate_deployment.py --config tests/configs/test_multiple_servers.yaml
 
 Validates SSH connectivity and connection pooling:
 
-- ✅ **Basic Connection** - Establish SSH connection
-- ✅ **Authentication** - SSH key authentication
-- ✅ **Connection Pooling** - Multiple concurrent connections
-- ✅ **Health Monitoring** - Connection health checks
-- ✅ **Auto-Reconnection** - Recovery from connection failures
+- **Basic Connection** - Establish SSH connection
+- **Authentication** - SSH key authentication
+- **Connection Pooling** - Multiple concurrent connections
+- **Health Monitoring** - Connection health checks
+- **Auto-Reconnection** - Recovery from connection failures
 
 ### 2. Security Tests
 
 Validates security mechanisms:
 
-- ✅ **Dangerous Command Blocking** - rm -rf /, fork bombs, etc.
-- ✅ **Path Restrictions** - Access control to directories
-- ✅ **Input Validation** - Parameter validation and sanitization
-- ✅ **Permission Checks** - File and command permission validation
+- **Dangerous Command Blocking** - rm -rf /, fork bombs, etc.
+- **Path Restrictions** - Access control to directories
+- **Input Validation** - Parameter validation and sanitization
+- **Permission Checks** - File and command permission validation
 
 ### 3. Command Execution Tests
 
 Validates command execution functionality:
 
-- ✅ **Basic Commands** - echo, whoami, date, uname
-- ✅ **Complex Commands** - Pipes, redirections, background
-- ✅ **Timeout Handling** - Command timeouts and cancellation
-- ✅ **Error Handling** - Non-zero exit codes and stderr
+- **Basic Commands** - echo, whoami, date, uname
+- **Complex Commands** - Pipes, redirections, background
+- **Timeout Handling** - Command timeouts and cancellation
+- **Error Handling** - Non-zero exit codes and stderr
 
 ### 4. File Operation Tests
 
 Validates file system operations:
 
-- ✅ **Read Files** - Text and binary file reading
-- ✅ **Write Files** - Creating and modifying files
-- ✅ **Directory Listing** - Listing directory contents
-- ✅ **File Transfer** - Upload and download operations
-- ✅ **Permission Handling** - File permission management
+- **Read Files** - Text and binary file reading
+- **Write Files** - Creating and modifying files
+- **Directory Listing** - Listing directory contents
+- **File Transfer** - Upload and download operations
+- **Permission Handling** - File permission management
 
 ### 5. System Monitoring Tests
 
 Validates system monitoring capabilities:
 
-- ✅ **CPU Metrics** - Usage percentage and core count
-- ✅ **Memory Metrics** - Total, used, available memory
-- ✅ **Disk Metrics** - Disk usage and filesystem information
-- ✅ **Process Monitoring** - Running processes and load average
-- ✅ **System Information** - Uptime, OS version, kernel info
+- **CPU Metrics** - Usage percentage and core count
+- **Memory Metrics** - Total, used, available memory
+- **Disk Metrics** - Disk usage and filesystem information
+- **Process Monitoring** - Running processes and load average
+- **System Information** - Uptime, OS version, kernel info
 
 ### 6. Service Management Tests
 
 Validates service control functionality:
 
-- ✅ **Service Listing** - List all services
-- ✅ **Service Status** - Get service status and health
-- ✅ **Service Control** - Start, stop, restart services
-- ✅ **Init System Detection** - systemd, upstart, sysv support
-- ✅ **Service Logs** - Retrieve service log files
+- **Service Listing** - List all services
+- **Service Status** - Get service status and health
+- **Service Control** - Start, stop, restart services
+- **Enhanced Init System Detection** - systemd, upstart, sysv with container support
+- **Service Logs** - Retrieve service log files
+- **Container Compatibility** - Docker/Podman environment detection
+
+### 7. Command Streaming Tests (New!)
+
+Validates real-time command output streaming:
+
+- **Long Command Streaming** - Test with `ping`, `tail -f`, system updates
+- **Stream Buffering** - Verify output chunks are properly handled
+- **Stream Timeout** - Test streaming timeout behavior
+- **Stream Cancellation** - Verify ability to cancel long-running streams
+- **Concurrent Streaming** - Multiple simultaneous streaming commands
+- **Error Stream Handling** - Stderr and stdout separation in streams
+
+### 8. Command Queue Tests (New!)
+
+Validates command queuing and rate limiting:
+
+- **Basic Queuing** - Commands execute in proper order
+- **Priority Handling** - High priority commands bypass normal queue
+- **Rate Limiting** - Commands respect per-server rate limits
+- **Concurrency Control** - Maximum concurrent commands enforced
+- **Queue Monitoring** - Queue status and metrics reporting
+- **Queue Cleanup** - Old results are properly cleaned up
+- **Error Recovery** - Failed commands don't block queue
+- **Queue Persistence** - Queue state during server restarts
 
 ## Operating System Compatibility
 
 ### Tested Distributions
 
-- **Ubuntu** 18.04, 20.04, 22.04 ✅
-- **Debian** 9, 10, 11 ✅
-- **CentOS** 7, 8 ✅
-- **Amazon Linux** 2 ✅
-- **Red Hat Enterprise Linux** 8, 9 ✅
+- **Ubuntu** 18.04, 20.04, 22.04
+- **Debian** 9, 10, 11
+- **CentOS** 7, 8
+- **Amazon Linux** 2
+- **Red Hat Enterprise Linux** 8, 9
 
 ### Architecture Support
 
-- **x86_64** (Intel/AMD 64-bit) ✅
-- **aarch64** (ARM 64-bit) ✅
-- **arm** (ARM 32-bit) ⚠️ Limited testing
+- **x86_64** (Intel/AMD 64-bit)
+- **aarch64** (ARM 64-bit)
+- **arm** (ARM 32-bit) - Limited testing
 
 ## VPS Provider Specific Testing
 
@@ -298,6 +318,106 @@ vultr-test:
     - "/root"
     - "/var/log"
     - "/var/www"
+```
+
+## Testing New Features (v0.2.0)
+
+### Command Streaming Test Examples
+
+Test real-time streaming with these commands:
+
+```bash
+# Long-running command with streaming
+exec_command:
+  command: "ping -c 10 google.com"
+  stream_output: true
+  server: "test-server"
+
+# System update with real-time output
+exec_command:
+  command: "apt update && apt list --upgradable"
+  stream_output: true
+  timeout: 300
+  priority: "high"
+
+# Monitor log file in real-time
+exec_command:
+  command: "tail -f /var/log/syslog | head -20"
+  stream_output: true
+  timeout: 30
+```
+
+### Command Queue Test Examples
+
+Test queuing and priority handling:
+
+```bash
+# Queue multiple commands with different priorities
+exec_command:
+  command: "sleep 10"
+  priority: "low"
+  use_queue: true
+
+exec_command:
+  command: "ps aux"
+  priority: "high"
+  use_queue: true
+
+exec_command:
+  command: "df -h"
+  priority: "critical"
+  use_queue: true
+
+# Monitor queue status
+get_queue_status:
+  server: "test-server"
+
+# Test rate limiting
+for i in {1..10}; do
+  exec_command:
+    command: "echo 'Command $i'"
+    use_queue: true
+done
+```
+
+### Container Environment Testing
+
+Test enhanced init system detection in containers:
+
+```bash
+# Test in Docker container
+docker run -d --name test-systemd ubuntu:22.04 /sbin/init
+docker exec test-systemd apt update && apt install -y openssh-server
+
+# Test in Podman container
+podman run -d --name test-systemd ubuntu:22.04 /sbin/init
+
+# Verify detection works in containers
+service_control:
+  service_name: "ssh"
+  action: "status"
+  server: "container-test"
+```
+
+### Queue Management Testing
+
+Test queue monitoring and cleanup:
+
+```bash
+# Generate queue activity
+for i in {1..20}; do
+  exec_command:
+    command: "sleep $((RANDOM % 10))"
+    priority: "normal"
+done
+
+# Monitor queue metrics
+get_queue_status:
+  # Gets status for all servers
+
+# Clean up old results
+cleanup_queue_results:
+  max_age_hours: 1
 ```
 
 ## Performance Testing
@@ -492,6 +612,6 @@ tests/
 
 ---
 
-**Happy Testing! 🧪**
+**Happy Testing!**
 
 For questions or issues with testing, please open an issue in the GitHub repository.
