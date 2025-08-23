@@ -51,7 +51,7 @@ class MCPVPSServer:
         self.connection_manager = ConnectionManager()
 
         # Initialize tools
-        self.command_tool = CommandTool(self.connection_manager)
+        self.command_tool = CommandTool(self.connection_manager, enable_queue=True)
         self.file_ops_tool = FileOperationsTool(self.connection_manager)
         self.monitoring_tool = SystemMonitoringTool(self.connection_manager)
         self.service_tool = ServiceManagementTool(self.connection_manager)
@@ -435,6 +435,8 @@ class MCPVPSServer:
                     "service_control",
                     "list_services",
                     "get_service_logs",
+                    "get_queue_status",
+                    "cleanup_queue_results",
                 }
 
                 if name not in valid_tools:
@@ -700,6 +702,12 @@ class MCPVPSServer:
                 logger.info(f"Added server: {server_config.name}")
             except Exception as e:
                 logger.error(f"Failed to add server {server_config.name}: {e}")
+
+        # Initialize queues for all added servers
+        if self.command_tool.queue_manager:
+            for server_name in self.connection_manager.list_servers():
+                self.command_tool.ensure_queue_for_server(server_name)
+            logger.info("Initialized command queues for all servers")
 
         logger.info(
             f"Initialized {len(self.connection_manager.pools)} server connections"

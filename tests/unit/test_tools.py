@@ -6,7 +6,7 @@ import pytest
 
 from src.vps_manager.tools.command import CommandTool
 from src.vps_manager.tools.file_ops import FileOperationsTool
-from src.vps_manager.tools.monitoring import MonitoringTool
+from src.vps_manager.tools.monitoring import SystemMonitoringTool
 from src.vps_manager.tools.services import ServiceManagementTool
 
 
@@ -258,7 +258,7 @@ class TestMonitoringTool:
         self, mock_connection_manager, system_status_data
     ):
         """Test successful system info retrieval."""
-        tool = MonitoringTool(mock_connection_manager)
+        tool = SystemMonitoringTool(mock_connection_manager)
 
         mock_conn = MagicMock()
 
@@ -319,7 +319,7 @@ class TestMonitoringTool:
     @pytest.mark.asyncio
     async def test_get_system_info_partial_failure(self, mock_connection_manager):
         """Test system info retrieval with partial command failures."""
-        tool = MonitoringTool(mock_connection_manager)
+        tool = SystemMonitoringTool(mock_connection_manager)
 
         mock_conn = MagicMock()
 
@@ -350,7 +350,7 @@ class TestMonitoringTool:
     @pytest.mark.asyncio
     async def test_get_system_info_no_connection(self, mock_connection_manager):
         """Test system info when no connection available."""
-        tool = MonitoringTool(mock_connection_manager)
+        tool = SystemMonitoringTool(mock_connection_manager)
 
         mock_connection_manager.get_connection.return_value = None
 

@@ -112,7 +112,8 @@ class SecurityValidator:
             allowed_paths: List of allowed filesystem paths
             additional_blocked_commands: Additional command patterns to block
         """
-        self.allowed_paths = [Path(p).resolve() for p in allowed_paths]
+        # Don't resolve() allowed paths as they are for remote filesystem, not local
+        self.allowed_paths = [Path(p).absolute() for p in allowed_paths]
         self.compiled_patterns = [
             re.compile(pattern, re.IGNORECASE) for pattern in self.DANGEROUS_PATTERNS
         ]
@@ -247,11 +248,9 @@ class SecurityValidator:
             if ".." in path.parts:
                 return False, "Path contains directory traversal (..)", path
 
-            # Resolve symlinks and get absolute path
-            try:
-                resolved_path = path.resolve()
-            except (OSError, RuntimeError) as e:
-                return False, f"Cannot resolve path: {e}", path
+            # Get absolute path without resolving symlinks (for remote filesystem)
+            # Note: We don't resolve() because that would use local filesystem symlinks
+            resolved_path = path.absolute()
 
             # Check against allowed paths
             is_allowed = False
